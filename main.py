@@ -38,24 +38,52 @@ def user_registration():
 
 
 def user_login():
-    login_username = input("USERNAME: ")
-    login_password = input("PASSWORD: ")
-    sha1password = hashlib.sha1(login_password.encode("utf-8")).hexdigest().upper()
-    if verify_login(login_username, sha1password):
-        return login_username
-    else:
-        print("Wrong username or password.")
-        return False
+    while True:
+        login_username = input("USERNAME: ")
+        login_password = input("PASSWORD: ")
+        sha1password = hashlib.sha1(login_password.encode("utf-8")).hexdigest().upper()
+        if verify_login(login_username, sha1password):
+            return login_username
+        else:
+            print("Wrong username or password.")
+            continue
 
 
-def first_pallet_of_options():
+def main():
     while True:
         login_register = input("1 - Login, 2 - Registration,  3 - Delete account, 4 - QUIT: ")
         if login_register == "1":
-            if user_login():
-                break
-            else:
-                continue
+            name = user_login()
+            while True:
+                options = input("1 - Check password, 2 - Search in DB, 3 - Delete saved data , 4 - QUIT ")
+                if options == "1":
+                    password = input("Type password you want to check: ")
+                    count, hashed_password = pwned_api_check(password)
+                    if count:
+                        print(f"{password} was found {count} times. You should change your password.")
+                    else:
+                        print(f"{password} was NOT found.")
+                    save_option = input("Do you want to save password as hash? y/n: ")
+                    if save_option == "y":
+                        save_data(name, hashed_password)
+                        continue
+                    else:
+                        continue
+                elif options == "2":
+                    password = input("Type password you want to check: ")
+                    sha1password = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+                    if search_data(name, sha1password):
+                        print("This password matched with hash in db.")
+                    else:
+                        print("The password not matched with hash in db.")
+                elif options == "3":
+                    delete_data(name)
+                    print("All data successfully deleted.")
+                elif options == "4":
+                    print("Good bye.")
+                    break
+                else:
+                    print("INVALID OPTION")
         elif login_register == "2":
             user_registration()
             continue
@@ -66,63 +94,10 @@ def first_pallet_of_options():
             delete_data(username)
             delete_account(username, sha1password)
             print("Account no longer exists.")
-
         elif login_register == "4":
             exit()
         else:
             print("INVALID OPTION")
-
-
-def second_verification():
-    while True:
-        user_name_check = input("Please type your username once more for double check: ")
-        if check_username(user_name_check):
-            print("Thank you.")
-            community_password = input("Community password: ")
-            if community_password == "paranoia":
-                print(f"Welcome {user_name_check}")
-                return user_name_check
-        else:
-            print("Wrong input")
-            continue
-
-
-def second_pallet_of_options(name):
-    while True:
-        options = input("1 - Check password, 2 - Search in DB, 3 - Delete saved data , 4 - QUIT ")
-        if options == "1":
-            password = input("Type password you want to check: ")
-            count, hashed_password = pwned_api_check(password)
-            if count:
-                print(f"{password} was found {count} times. You should change your password.")
-            else:
-                print(f"{password} was NOT found.")
-            save_option = input("Do you want to save password as hash? y/n: ")
-            if save_option == "y":
-                save_data(name, hashed_password)
-                continue
-            else:
-                continue
-        elif options == "2":
-            password = input("Type password you want to check: ")
-            sha1password = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
-            if search_data(name, sha1password):
-                print("This password matched with hash in db.")
-            else:
-                print("The password not matched with hash in db.")
-        elif options == "3":
-            delete_data(name)
-        elif options == "4":
-            print("Good bye.")
-            break
-        else:
-            print("INVALID OPTION")
-
-
-def main():
-    first_pallet_of_options()
-    user_name = second_verification()
-    second_pallet_of_options(user_name)
 
 
 if __name__ == "__main__":
