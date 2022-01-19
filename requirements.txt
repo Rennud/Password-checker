@@ -1,0 +1,9 @@
+pip~=21.1.2
+wheel~=0.36.2
+six~=1.16.0
+certifi~=2021.10.8
+idna~=3.3
+urllib3~=1.26.8
+pycparser~=2.21
+setuptools~=57.0.0
+requests~=2.27.1
