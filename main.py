@@ -1,39 +1,48 @@
 import requests
 import hashlib
-from db import delete_account, delete_data, search_data, save_data, save_credentials, check_username, verify_login
+from db import delete_account, delete_data, search_data, save_data, save_credentials, verify_username, verify_credentials
 
 
+# Through this API we can get all leaked passwords as hashes
 def request_api_data(query_char):
-    url = "https://api.pwnedpasswords.com/range/" + query_char
+    url = "https://api.pwnedpasswords.com/range/" + query_char  # first five characters of our hashed password
     respond = requests.get(url)
     if respond.status_code != 200:
         raise RuntimeError(f"Error fetching: {respond.status_code}, check the api and try it again")
     return respond
 
 
-def get_password_leaks_count(hashes, hast_to_check):
-    hashes = (line.split(":") for line in hashes.text.splitlines())
-    for h, count in hashes:
+# We compare our hashed password with the data we got.
+# If there is a match we count how many times are password was leaked.
+def get_password_leaks_count(hash_passwords, hast_to_check):
+    hash_passwords = (line.split(":") for line in hash_passwords.text.splitlines())
+    for h, count in hash_passwords:
         if h == hast_to_check:
             return count
     return 0
 
 
+# Hash password - sha1.
+def hash_password(password):
+    return hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
+
+
+# For security reason we only send first 5 characters of our hashed password.
 def pwned_api_check(password):
-    sha1password = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
-    first5_char, tail = sha1password[:5], sha1password[5:]
+    hashed_password = hash_password(password)
+    first5_char, tail = hashed_password[:5], hashed_password[5:]
     response = request_api_data(first5_char)
-    return get_password_leaks_count(response, tail), sha1password
+    return get_password_leaks_count(response, tail), hashed_password
 
 
 def user_registration():
     user_name = input("Choose username: ")
-    if check_username(user_name):
+    if verify_username(user_name):
         print("Username is already in use.")
     else:
         password = input("Choose password: ")
-        sha1password = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
-        save_credentials(user_name, sha1password)
+        hashed_password = hash_password(password)
+        save_credentials(user_name, hashed_password)
         print("Registration is complete!")
 
 
@@ -41,22 +50,28 @@ def user_login():
     while True:
         login_username = input("USERNAME: ")
         login_password = input("PASSWORD: ")
-        sha1password = hashlib.sha1(login_password.encode("utf-8")).hexdigest().upper()
-        if verify_login(login_username, sha1password):
-            return login_username
-        else:
-            print("Wrong username or password.")
+        hashed_password = hash_password(login_password)
+        if not verify_credentials(login_username, hashed_password):
+            if not verify_username(login_username):
+                print("Username don´t exist.")
+            else:
+                print("Wrong username or password.")
+                continue
             continue
+        return login_username
 
 
 def main():
+    # First pallet of options
     while True:
-        login_register = input("1 - Login, 2 - Registration,  3 - Delete account, 4 - QUIT: ")
-        if login_register == "1":
+        first_pallet_of_options = input("1 - Login, 2 - Registration,  3 - Delete account, 4 - QUIT: ")
+        if first_pallet_of_options == "1":
             name = user_login()
+            # Second pallet of options
             while True:
-                options = input("1 - Check password, 2 - Search in DB, 3 - Delete saved data , 4 - QUIT ")
-                if options == "1":
+                second_pallet_of_options = input("1 - Check password, 2 - Search in DB, 3 - Delete saved data , "
+                                                 "4 - Logout ")
+                if second_pallet_of_options == "1":
                     password = input("Type password you want to check: ")
                     count, hashed_password = pwned_api_check(password)
                     if count:
@@ -69,32 +84,38 @@ def main():
                         continue
                     else:
                         continue
-                elif options == "2":
+                elif second_pallet_of_options == "2":
                     password = input("Type password you want to check: ")
-                    sha1password = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
-                    if search_data(name, sha1password):
+                    hashed_password = hash_password(password)
+                    if search_data(name, hashed_password):
                         print("This password matched with hash in db.")
                     else:
                         print("The password not matched with hash in db.")
-                elif options == "3":
+                elif second_pallet_of_options == "3":
                     delete_data(name)
-                    print("All data successfully deleted.")
-                elif options == "4":
+                    print("Successfully deleted.")
+                elif second_pallet_of_options == "4":
                     print("Good bye.")
                     break
                 else:
                     print("INVALID OPTION")
-        elif login_register == "2":
+        elif first_pallet_of_options == "2":
             user_registration()
             continue
-        elif login_register == "3":
+        elif first_pallet_of_options == "3":
             username = input("USERNAME: ")
             password = input("PASSWORD: ")
-            sha1password = hashlib.sha1(password.encode("utf-8")).hexdigest().upper()
-            delete_data(username)
-            delete_account(username, sha1password)
-            print("Account no longer exists.")
-        elif login_register == "4":
+            hashed_password = hash_password(password)
+            if not verify_username(username):
+                print("Username don´t exist.")
+            elif verify_credentials(username, hashed_password):
+                delete_data(username)
+                delete_account(username, hashed_password)
+                print("Account no longer exists.")
+            else:
+                print("Invalid username or password.")
+
+        elif first_pallet_of_options == "4":
             exit()
         else:
             print("INVALID OPTION")
