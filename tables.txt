@@ -1,2 +1,4 @@
-users = username, password
-user_hash = username, hash
+users =
+    username, password
+user_hash =
+    username, hash
